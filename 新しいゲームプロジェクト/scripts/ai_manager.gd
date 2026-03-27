@@ -84,19 +84,15 @@ func _actually_generate(api_key: String, version: String, model_path: String):
 var _js_callback_ref # コールバック参照保持用
 
 func _generate_via_js(url_raw: String, body_data_raw: String):
-	# JavaScript の非同期 fetch 結果を安全に受け取るためのコールバック作成
 	_js_callback_ref = JavaScriptBridge.create_callback(_on_js_fetch_completed)
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
 	
-	# 引数を URI エンコードして JS 側に渡す（引用符や改行による破損を防ぐ）
-	var encoded_url = url_raw.uri_encode()
-	var encoded_body = body_data_raw.uri_encode()
+	# body_data の内側のバッククォートをエスケープ
+	var safe_body = body_data_raw.replace("`", "\\`").replace("${", "\\${")
 	
 	var js_code = """
-	(async function(enc_url, enc_body) {
-		const url = decodeURIComponent(enc_url);
-		const body = decodeURIComponent(enc_body);
+	(async function(url, body) {
 		try {
 			const resp = await fetch(url, {
 				method: 'POST',
@@ -104,16 +100,22 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 				body: body
 			});
 			const status = resp.status;
-			const data = await resp.json();
+			let data = {};
+			try { data = await resp.json(); } catch(e) { data = {message: 'Empty response'}; }
+			
 			if (!resp.ok) {
-				window.godot_fetch_callback(JSON.stringify({error: 'HTTP ' + status, code: status, details: data}));
+				window.godot_fetch_callback(JSON.stringify({
+					error: 'HTTP ' + status, 
+					code: status, 
+					details: JSON.stringify(data)
+				}));
 			} else {
 				window.godot_fetch_callback(JSON.stringify(data));
 			}
 		} catch (e) {
 			window.godot_fetch_callback(JSON.stringify({error: e.message, code: 0}));
 		}
-	})('""" + encoded_url + """', '""" + encoded_body + """')
+	})(`""" + url_raw + """`, `""" + safe_body + """`)
 	"""
 	JavaScriptBridge.eval(js_code)
 
@@ -130,11 +132,12 @@ func _on_js_fetch_completed(args):
 				_try_generate_with_current_model()
 			else:
 				var mname = _last_candidates[_current_model_index]["m"]
-				error_occurred.emit("JS通信エラー(" + str(code) + " @ " + mname + "): " + str(data["error"]))
+				var details = data.get("details", "")
+				error_occurred.emit("JS通信エラー(" + str(code) + " @ " + mname + "): " + str(data["error"]) + "\n詳細: " + details)
 		else:
 			_parse_gemini_response(data)
 	else:
-		error_occurred.emit("JS通信結果の解析に失敗しました。")
+		error_occurred.emit("JS通信結果のパース失敗")
 
 func _on_request_completed(result, response_code, headers, body):
 	if response_code == 404 and _current_model_index < _last_candidates.size() - 1:
@@ -145,7 +148,7 @@ func _on_request_completed(result, response_code, headers, body):
 	var response_text = body.get_string_from_utf8()
 	if response_code != 200:
 		var model_name = _last_candidates[_current_model_index]["m"]
-		error_occurred.emit("生成エラー(" + str(response_code) + " @ " + model_name + "): " + response_text.left(50))
+		error_occurred.emit("生成エラー(" + str(response_code) + " @ " + model_name + "): " + response_text.left(100))
 		return
 
 	var json = JSON.new()
@@ -165,4 +168,4 @@ func _parse_gemini_response(response: Dictionary):
 				monster_generated.emit(inner_json.get_data())
 				return
 	
-	error_occurred.emit("回答形式が不正です。")
+	error_occurred.emit("AIの回答形式が不正です。")
