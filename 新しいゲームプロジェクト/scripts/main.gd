@@ -14,7 +14,7 @@ extends Control
 @onready var copy_log_button = $UI/CopyLogButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.24"
+const APP_VERSION = "Ver 1.25"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
@@ -52,6 +52,8 @@ func _ready():
 
 	ai_manager.monster_generated.connect(_on_monster_generated)
 	ai_manager.error_occurred.connect(_on_ai_error)
+	ai_manager.status_label = status_label # 重要な欠落を修正
+	ai_manager.APP_VERSION = APP_VERSION
 	
 	attack_button.disabled = true
 	

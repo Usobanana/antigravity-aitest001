@@ -10,6 +10,11 @@ signal error_occurred(message: String)
 var _last_api_key = ""
 var _last_candidates = []
 var _current_model_index = 0
+var _error_history = ""
+
+# 親(Main)から設定される変数
+var status_label: Label
+var APP_VERSION = "Ver 1.25"
 
 func generate_monster(api_key: String):
 	if api_key.is_empty():
