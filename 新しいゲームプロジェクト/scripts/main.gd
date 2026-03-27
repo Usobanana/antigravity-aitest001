@@ -11,6 +11,7 @@ extends Control
 @onready var attack_button = $UI/Buttons/AttackButton
 @onready var api_key_input = $UI/APIKeyInput
 const SAVE_PATH = "user://settings.cfg"
+const APP_VERSION = "Ver 1.6.1"
 
 var current_monster = {}
 var player_hp = 100
@@ -48,7 +49,7 @@ func _ready():
 	
 	attack_button.disabled = true
 	
-	status_label.text = "Ver 1.6 - 待機中"
+	status_label.text = APP_VERSION + " - 待機中"
 	load_api_key()
 	update_ui()
 
@@ -93,7 +94,7 @@ func _on_monster_generated(data):
 	update_ui()
 
 func _on_ai_error(msg):
-	status_label.text = "Ver 1.4 - エラー発生"
+	status_label.text = APP_VERSION + " - エラー発生"
 	log_label.text = msg
 	spawn_button.disabled = false
 
