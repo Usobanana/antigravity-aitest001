@@ -14,7 +14,7 @@ extends Control
 @onready var copy_log_button = $UI/CopyLogButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.25"
+const APP_VERSION = "Ver 1.26"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
@@ -102,7 +102,7 @@ func _on_spawn_button_pressed():
 		return
 	
 	save_api_key(key) # 保存
-	status_label.text = "AI召喚中..."
+	status_label.text = APP_VERSION + " - AI召喚中..."
 	spawn_button.disabled = true
 	ai_manager.generate_monster(key)
 

@@ -22,17 +22,8 @@ func generate_monster(api_key: String):
 		return
 
 	_last_api_key = api_key
-	# デバッグ用: まずはモデルリストを取得してみる
-	var list_url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + api_key
-	var http_request = HTTPRequest.new()
-	add_child(http_request)
-	http_request.request_completed.connect(_on_debug_completed.bind(api_key))
-	http_request.request(list_url, [], HTTPClient.METHOD_GET)
-
-func _on_debug_completed(result, response_code, headers, body, api_key):
-	var response_text = body.get_string_from_utf8()
 	
-	# v1 と v1beta の両方、および最新の 8b モデルを含む候補
+	# モデル候補のリセットと開始
 	_last_candidates = [
 		{"v": "v1beta", "m": "models/gemini-1.5-flash-latest"},
 		{"v": "v1beta", "m": "models/gemini-1.5-flash"},
@@ -41,24 +32,10 @@ func _on_debug_completed(result, response_code, headers, body, api_key):
 		{"v": "v1beta", "m": "models/gemini-1.5-pro"},
 		{"v": "v1", "m": "models/gemini-pro"}
 	]
-	
-	if response_code == 200:
-		var json = JSON.new()
-		var parse_err = json.parse(response_text)
-		if parse_err == OK:
-			var data = json.get_data()
-			if data.has("models"):
-				for m in data["models"]:
-					var mname = m["name"]
-					# 重複チェック
-					var found = false
-					for c in _last_candidates:
-						if c["m"] == mname: found = true
-					if not found:
-						_last_candidates.append({"v": "v1beta", "m": mname})
-
 	_current_model_index = 0
 	_error_history = ""
+	_try_generate_with_current_model()
+	
 
 func _try_generate_with_current_model():
 	if _current_model_index >= _last_candidates.size():
