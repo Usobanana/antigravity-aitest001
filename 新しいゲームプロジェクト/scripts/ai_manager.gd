@@ -28,7 +28,7 @@ func _on_debug_completed(result, response_code, headers, body, api_key):
 	var json = JSON.new()
 	var parse_err = json.parse(response_text)
 	if parse_err != OK:
-		error_occurred.emit("デバッグ解析失敗")
+		error_occurred.emit("デバッグ解析失敗(Code:" + str(response_code) + " Len:" + str(body.size()) + "): " + response_text.left(50))
 		return
 		
 	var data = json.get_data()

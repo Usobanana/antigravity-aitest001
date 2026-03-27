@@ -11,7 +11,7 @@ extends Control
 @onready var attack_button = $UI/Buttons/AttackButton
 @onready var api_key_input = $UI/APIKeyInput
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.6.1"
+const APP_VERSION = "Ver 1.6.2"
 
 var current_monster = {}
 var player_hp = 100
