@@ -12,7 +12,7 @@ extends Control
 @onready var api_key_input = $UI/APIKeyInput
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.7.2"
+const APP_VERSION = "Ver 1.7.3"
 
 var image_http_request: HTTPRequest
 
@@ -123,11 +123,14 @@ func _fetch_monster_image(prompt: String):
 	image_http_request.request(url, [], HTTPClient.METHOD_GET)
 
 func _on_image_request_completed(result, response_code, headers, body):
-	if result != OK:
-		log_label.text += "\n[color=red](画像通信失敗: result=" + str(result) + ")[/color]"
-		return
-	if response_code != 200:
-		log_label.text += "\n[color=red](画像取得失敗: HTTP " + str(response_code) + ")[/color]"
+	if result != OK or response_code != 200:
+		# 1回だけ別サービス(Robohash)でリトライを試みる
+		if !monster_image.texture: # まだ画像がない場合
+			log_label.text += "\n[color=yellow](予備の画像エンジンに切り替えます...)[/color]"
+			var fallback_url = "https://robohash.org/" + current_monster["name"].uri_encode() + "?set=set2"
+			image_http_request.request(fallback_url, [], HTTPClient.METHOD_GET)
+		else:
+			log_label.text += "\n[color=red](画像取得を断念しました)[/color]"
 		return
 		
 	var image = Image.new()
