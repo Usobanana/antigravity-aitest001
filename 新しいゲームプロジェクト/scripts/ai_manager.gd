@@ -88,11 +88,12 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
 	
-	# body_data の内側のバッククォートをエスケープ
-	var safe_body = body_data_raw.replace("`", "\\`").replace("${", "\\${")
+	# 引数を URI エンコードして JS 側に渡す（バッククォートやエスケープ消失を防ぐ）
+	var encoded_body = body_data_raw.uri_encode()
 	
 	var js_code = """
-	(async function(url, body) {
+	(async function(url, enc_body) {
+		const body = decodeURIComponent(enc_body);
 		try {
 			const resp = await fetch(url, {
 				method: 'POST',
@@ -115,7 +116,7 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 		} catch (e) {
 			window.godot_fetch_callback(JSON.stringify({error: e.message, code: 0}));
 		}
-	})(`""" + url_raw + """`, `""" + safe_body + """`)
+	})('""" + url_raw + """', '""" + encoded_body + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
