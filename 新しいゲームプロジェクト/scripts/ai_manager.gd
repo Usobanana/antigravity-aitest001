@@ -48,61 +48,57 @@ func _try_generate_with_current_model():
 	_actually_generate(_last_api_key, target["v"], target["m"])
 
 func _actually_generate(api_key: String, version: String, model_path: String):
-	# 最もシンプルな ?key= 方式（カスタムヘッダーによるプリフライト 404 回避）
+	# v1 安定版を優先しつつ URL を構築
 	var url = "https://generativelanguage.googleapis.com/" + version + "/" + model_path + ":generateContent?key=" + api_key
 	
 	var prompt = "RPGモンスター生成(JSON形式のみ): {\"name\":\"名前\",\"hp\":50,\"atk\":10,\"greeting\":\"出現!\",\"death_cry\":\"ぐふっ\",\"image_prompt\":\"English monster appearance keywords\"}"
+
+	if OS.has_feature("web"):
+		_generate_via_js(url, prompt)
+		return
+
 	var body_data = JSON.stringify({
 		"contents": [{ "parts": [{ "text": prompt }] }]
 	})
-
-	# Web環境（iOS等）では Godot の HTTPRequest ではなく JS の fetch を試す（CORS/404対策）
-	if OS.has_feature("web"):
-		_generate_via_js(url, body_data)
-		return
-
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
 	var headers = ["Content-Type: application/json"]
 	http_request.request(url, headers, HTTPClient.METHOD_POST, body_data)
 
-var _js_callback_ref # コールバック参照保持用
-
-func _generate_via_js(url_raw: String, body_data_raw: String):
+func _generate_via_js(url_raw: String, prompt_raw: String):
 	_js_callback_ref = JavaScriptBridge.create_callback(_on_js_fetch_completed)
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
 	
-	# ボディのみエンコード（URLは絶対そのまま：コロンが %3A になると 404 になるため）
-	var encoded_body = body_data_raw.uri_encode()
-	
-	# URL内のシングルクォートをエスケープ (Gemini URLには通常含まれないが念の為)
-	var safe_url = url_raw.replace("'", "\\'")
+	var enc_prompt = prompt_raw.uri_encode()
+	var enc_url = url_raw.uri_encode()
 	
 	var js_code = """
-	(async function(url, enc_body) {
-		const body = decodeURIComponent(enc_body);
+	(async function(enc_url, enc_prompt) {
+		const url = decodeURIComponent(enc_url);
+		const prompt = decodeURIComponent(enc_prompt);
+		const body_obj = { "contents": [{ "parts": [{ "text": prompt }] }] };
 		
-		// 10秒のタイムアウトを設定
 		let timeout_triggered = false;
 		const id = setTimeout(() => {
 			timeout_triggered = true;
 			window.godot_fetch_callback(JSON.stringify({ok: false, error: 'TIMEOUT', code: 0}));
-		}, 10000);
+		}, 12000);
 
 		try {
+			// CORS プリフライトを避けるため敢えて text/plain を試す（Google API はこれを受け付ける場合がある）
 			const resp = await fetch(url, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: body
+				headers: { 'Content-Type': 'text/plain' },
+				body: JSON.stringify(body_obj)
 			});
 			if (timeout_triggered) return;
 			clearTimeout(id);
 
 			const status = resp.status;
 			let data = {};
-			try { data = await resp.json(); } catch(e) { data = {message: 'No JSON'}; }
+			try { data = await resp.json(); } catch(e) { data = {message: 'JSON error or empty'}; }
 			
 			window.godot_fetch_callback(JSON.stringify({
 				ok: resp.ok,
@@ -115,7 +111,7 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 			clearTimeout(id);
 			window.godot_fetch_callback(JSON.stringify({ok: false, error: e.message, code: 0}));
 		}
-	})('""" + safe_url + """', '""" + encoded_body + """')
+	})('""" + enc_url + """', '""" + enc_prompt + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
