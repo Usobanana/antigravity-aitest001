@@ -12,7 +12,7 @@ extends Control
 @onready var api_key_input = $UI/APIKeyInput
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.7.3"
+const APP_VERSION = "Ver 1.8"
 
 var image_http_request: HTTPRequest
 
@@ -141,6 +141,8 @@ func _on_image_request_completed(result, response_code, headers, body):
 	if err == OK:
 		var tex = ImageTexture.create_from_image(image)
 		monster_image.texture = tex
+		monster_image.modulate = Color.WHITE
+		monster_image.self_modulate.a = 1.0 # 透明度リセット
 		log_label.text += "\n[color=green](画像を表示しました)[/color]"
 	else:
 		log_label.text += "\n[color=red](画像解析失敗: " + str(err) + ")[/color]"
