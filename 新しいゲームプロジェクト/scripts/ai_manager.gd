@@ -29,10 +29,11 @@ func _on_debug_completed(result, response_code, headers, body, api_key):
 	
 	# v1 と v1beta の両方、および最新の 8b モデルを含む候補
 	_last_candidates = [
+		{"v": "v1beta", "m": "models/gemini-1.5-flash-latest"},
 		{"v": "v1beta", "m": "models/gemini-1.5-flash"},
 		{"v": "v1", "m": "models/gemini-1.5-flash"},
 		{"v": "v1beta", "m": "models/gemini-1.5-flash-8b"},
-		{"v": "v1beta", "m": "models/gemini-1.5-flash-latest"},
+		{"v": "v1beta", "m": "models/gemini-1.5-pro"},
 		{"v": "v1", "m": "models/gemini-pro"}
 	]
 	
@@ -63,7 +64,8 @@ func _try_generate_with_current_model():
 	_actually_generate(_last_api_key, target["v"], target["m"])
 
 func _actually_generate(api_key: String, version: String, model_path: String):
-	var url = "https://generativelanguage.googleapis.com/" + version + "/" + model_path + ":generateContent?key=" + api_key
+	# ヘッダーベースの認証に切り替え (URL パラメータによる 404 回避)
+	var url = "https://generativelanguage.googleapis.com/" + version + "/" + model_path + ":generateContent"
 	
 	var prompt = "RPGモンスター生成(JSON形式のみ): {\"name\":\"名前\",\"hp\":50,\"atk\":10,\"greeting\":\"出現!\",\"death_cry\":\"ぐふっ\",\"image_prompt\":\"English monster appearance keywords\"}"
 	var body_data = JSON.stringify({
@@ -72,18 +74,21 @@ func _actually_generate(api_key: String, version: String, model_path: String):
 
 	# Web環境（iOS等）では Godot の HTTPRequest ではなく JS の fetch を試す（CORS/404対策）
 	if OS.has_feature("web"):
-		_generate_via_js(url, body_data)
+		_generate_via_js(url, api_key, body_data)
 		return
 
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
-	var headers = ["Content-Type: application/json"]
+	var headers = [
+		"Content-Type: application/json",
+		"x-goog-api-key: " + api_key
+	]
 	http_request.request(url, headers, HTTPClient.METHOD_POST, body_data)
 
 var _js_callback_ref # コールバック参照保持用
 
-func _generate_via_js(url_raw: String, body_data_raw: String):
+func _generate_via_js(url_raw: String, api_key: String, body_data_raw: String):
 	_js_callback_ref = JavaScriptBridge.create_callback(_on_js_fetch_completed)
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
@@ -92,17 +97,20 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 	var encoded_body = body_data_raw.uri_encode()
 	
 	var js_code = """
-	(async function(url, enc_body) {
+	(async function(url, key, enc_body) {
 		const body = decodeURIComponent(enc_body);
 		try {
 			const resp = await fetch(url, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 
+					'Content-Type': 'application/json',
+					'x-goog-api-key': key
+				},
 				body: body
 			});
 			const status = resp.status;
 			let data = {};
-			try { data = await resp.json(); } catch(e) { data = {message: 'Empty response'}; }
+			try { data = await resp.json(); } catch(e) { data = {message: 'No JSON response'}; }
 			
 			if (!resp.ok) {
 				window.godot_fetch_callback(JSON.stringify({
@@ -116,7 +124,7 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 		} catch (e) {
 			window.godot_fetch_callback(JSON.stringify({error: e.message, code: 0}));
 		}
-	})('""" + url_raw + """', '""" + encoded_body + """')
+	})('""" + url_raw + """', '""" + api_key + """', '""" + encoded_body + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
