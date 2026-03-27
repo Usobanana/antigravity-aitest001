@@ -81,8 +81,14 @@ func _actually_generate(api_key: String, version: String, model_path: String):
 	var headers = ["Content-Type: application/json"]
 	http_request.request(url, headers, HTTPClient.METHOD_POST, body_data)
 
+var _js_callback_ref # コールバック参照保持用
+
 func _generate_via_js(url: String, body_data: String):
-	# JavaScript を介して通信を行い、結果を callback で受け取る
+	# JavaScript の非同期 fetch 結果を安全に受け取るためのコールバック作成
+	_js_callback_ref = JavaScriptBridge.create_callback(_on_js_fetch_completed)
+	var window = JavaScriptBridge.get_interface("window")
+	window.godot_fetch_callback = _js_callback_ref
+	
 	var js_code = """
 	(async function(url, body) {
 		try {
@@ -91,38 +97,38 @@ func _generate_via_js(url: String, body_data: String):
 				headers: { 'Content-Type': 'application/json' },
 				body: body
 			});
-			if (!resp.ok) {
-				return JSON.stringify({error: 'HTTP ' + resp.status});
-			}
+			const status = resp.status;
 			const data = await resp.json();
-			return JSON.stringify(data);
+			if (!resp.ok) {
+				window.godot_fetch_callback(JSON.stringify({error: 'HTTP ' + status, code: status}));
+			} else {
+				window.godot_fetch_callback(JSON.stringify(data));
+			}
 		} catch (e) {
-			return JSON.stringify({error: e.message});
+			window.godot_fetch_callback(JSON.stringify({error: e.message, code: 0}));
 		}
 	})('""" + url + """', '""" + body_data.replace("'", "\\'") + """')
 	"""
-	
-	# 同期的に結果を待つ（JSの実装によるが eval は非同期の結果を直接は返せないことが多い）
-	# 代わりに非同期で実行し、window オブジェクト等に結果を置いてポーリングするか、
-	# JavaScriptBridge.get_interface を使うが、簡易的に eval で同期的に試す
-	var result = JavaScriptBridge.eval(js_code)
-	if result:
-		var json = JSON.new()
-		if json.parse(result) == OK:
-			var data = json.get_data()
-			if data.has("error"):
-				# 404 の場合はリトライ
-				if data["error"].contains("404") and _current_model_index < _last_candidates.size() - 1:
-					_current_model_index += 1
-					_try_generate_with_current_model()
-				else:
-					error_occurred.emit("JS通信エラー: " + data["error"])
+	JavaScriptBridge.eval(js_code)
+
+func _on_js_fetch_completed(args):
+	var result_json = args[0]
+	var json = JSON.new()
+	if json.parse(result_json) == OK:
+		var data = json.get_data()
+		if data.has("error"):
+			var code = data.get("code", 0)
+			# 404 の場合はリトライ
+			if code == 404 and _current_model_index < _last_candidates.size() - 1:
+				_current_model_index += 1
+				_try_generate_with_current_model()
 			else:
-				# 成功
-				_parse_gemini_response(data)
-				return
-	
-	error_occurred.emit("JS通信の取得に失敗しました。")
+				var mname = _last_candidates[_current_model_index]["m"]
+				error_occurred.emit("JS通信エラー(" + str(code) + " @ " + mname + "): " + str(data["error"]))
+		else:
+			_parse_gemini_response(data)
+	else:
+		error_occurred.emit("JS通信結果の解析に失敗しました。")
 
 func _on_request_completed(result, response_code, headers, body):
 	if response_code == 404 and _current_model_index < _last_candidates.size() - 1:
