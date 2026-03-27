@@ -12,7 +12,8 @@ extends Control
 @onready var api_key_input = $UI/APIKeyInput
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.8"
+const APP_VERSION = "Ver 1.9"
+const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
 
@@ -115,7 +116,8 @@ func _on_ai_error(msg):
 func _fetch_monster_image(prompt: String):
 	# Pollinations.ai を使用して画像を生成・取得
 	monster_image.texture = null # 前の画像をクリア
-	var encoded_prompt = (prompt + " pixel art sprite, dark background").uri_encode()
+	var combined_prompt = prompt + ", " + STYLE_PROMPT
+	var encoded_prompt = combined_prompt.uri_encode()
 	var url = "https://image.pollinations.ai/prompt/" + encoded_prompt + "?width=512&height=512&nologo=true&seed=" + str(randi())
 	
 	log_label.text += "\n[color=gray](画像を生成中...)[/color]"
