@@ -25,7 +25,7 @@ func generate_monster(api_key: String):
 	
 	# モデル候補のリセットと開始
 	_last_candidates = [
-		{"v": "v1beta", "m": "models/gemini-1.5-flash-latest"},
+		{"v": "v1beta", "m": "models/gemini-pro"}, # PC版で唯一動いていた王道
 		{"v": "v1beta", "m": "models/gemini-1.5-flash"},
 		{"v": "v1", "m": "models/gemini-1.5-flash"},
 		{"v": "v1beta", "m": "models/gemini-1.5-flash-8b"},
