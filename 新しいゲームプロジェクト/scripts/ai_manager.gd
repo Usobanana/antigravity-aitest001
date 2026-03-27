@@ -25,10 +25,7 @@ func generate_monster(api_key: String):
 	var body = JSON.stringify({
 		"contents": [{
 			"parts": [{ "text": prompt }]
-		}],
-		"generationConfig": {
-			"response_mime_type": "application/json"
-		}
+		}]
 	})
 
 	var headers = ["Content-Type: application/json"]
