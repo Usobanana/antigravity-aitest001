@@ -84,8 +84,8 @@ func _on_spawn_button_pressed():
 
 func _on_monster_generated(data):
 	current_monster = data
-	current_monster["current_hp"] = data["hp"]
-	status_label.text = "モンスター出現！"
+	current_monster["current_hp"] = data["hp"] # バージョン表示を追加してキャッシュ更新を確認
+	status_label.text = "Ver 1.3 - モンスター出現！"
 	log_label.text = data["greeting"]
 	spawn_button.disabled = false
 	attack_button.disabled = false
