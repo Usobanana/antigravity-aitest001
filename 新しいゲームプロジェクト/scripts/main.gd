@@ -10,20 +10,57 @@ extends Control
 @onready var spawn_button = $UI/Buttons/SpawnButton
 @onready var attack_button = $UI/Buttons/AttackButton
 @onready var api_key_input = $UI/APIKeyInput
+const SAVE_PATH = "user://settings.cfg"
 
 var current_monster = {}
 var player_hp = 100
 
 func _ready():
-	# バージョン表示を追加してキャッシュ更新を確認
-	status_label.text = "Ver 1.2 - 待機中"
-	log_label.text = "[center]日本語フォントテスト: あいうえお ABC[/center]"
+	# 日本語フォントとサイズの適用 (モバイル向けに大きく)
+	var jp_font = load("res://fonts/jp_font.ttf")
+	if jp_font:
+		# 全体的にフォントサイズを 32px 以上に拡大
+		var font_size = 32
+		var title_size = 48
+		
+		status_label.add_theme_font_override("font", jp_font)
+		status_label.add_theme_font_size_override("font_size", font_size)
+		
+		monster_name_label.add_theme_font_override("font", jp_font)
+		monster_name_label.add_theme_font_size_override("font_size", title_size)
+		
+		log_label.add_theme_font_override("normal_font", jp_font)
+		log_label.add_theme_font_size_override("normal_font_size", font_size)
+		
+		api_key_input.add_theme_font_override("font", jp_font)
+		api_key_input.add_theme_font_size_override("font_size", font_size)
+		# コピペしやすくするために Secret を解除
+		api_key_input.secret = false
+		
+		spawn_button.add_theme_font_override("font", jp_font)
+		spawn_button.add_theme_font_size_override("font_size", font_size)
+		
+		attack_button.add_theme_font_override("font", jp_font)
+		attack_button.add_theme_font_size_override("font_size", font_size)
 
 	ai_manager.monster_generated.connect(_on_monster_generated)
 	ai_manager.error_occurred.connect(_on_ai_error)
 	
 	attack_button.disabled = true
+	
+	load_api_key()
 	update_ui()
+
+func load_api_key():
+	var config = ConfigFile.new()
+	var err = config.load(SAVE_PATH)
+	if err == OK:
+		api_key_input.text = config.get_value("api", "key", "")
+
+func save_api_key(key: String):
+	var config = ConfigFile.new()
+	config.set_value("api", "key", key)
+	config.save(SAVE_PATH)
 
 func update_ui():
 	if current_monster.is_empty():
@@ -39,6 +76,8 @@ func _on_spawn_button_pressed():
 	if key.is_empty():
 		status_label.text = "APIキーを入力してください"
 		return
+	
+	save_api_key(key) # 保存
 	status_label.text = "AI召喚中..."
 	spawn_button.disabled = true
 	ai_manager.generate_monster(key)
