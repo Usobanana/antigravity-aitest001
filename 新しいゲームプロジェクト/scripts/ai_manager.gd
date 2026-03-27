@@ -25,11 +25,40 @@ func _on_debug_completed(result, response_code, headers, body, api_key):
 		error_occurred.emit("デバッグ疎通失敗(" + str(response_code) + "): " + response_text.left(100))
 		return
 	
-	# リスト取得成功したら、そのままモンスター生成へ
-	_actually_generate(api_key)
+	var json = JSON.new()
+	var parse_err = json.parse(response_text)
+	if parse_err != OK:
+		error_occurred.emit("デバッグ解析失敗")
+		return
+		
+	var data = json.get_data()
+	var available_models = []
+	if data.has("models"):
+		for m in data["models"]:
+			available_models.append(m["name"])
+	
+	# 最適なモデルを順に探す
+	var best_model = ""
+	var candidates = ["models/gemini-1.5-flash", "models/gemini-1.5-flash-latest", "models/gemini-1.5-pro", "models/gemini-pro"]
+	
+	for c in candidates:
+		if c in available_models:
+			best_model = c
+			break
+	
+	if best_model == "":
+		if available_models.size() > 0:
+			best_model = available_models[0] # 何でも良いから最初のを使う
+		else:
+			error_occurred.emit("利用可能なモデルが見つかりません。")
+			return
 
-func _actually_generate(api_key: String):
-	var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + api_key
+	# モンスター生成へ進む
+	_actually_generate(api_key, best_model)
+
+func _actually_generate(api_key: String, model_path: String):
+	# model_path は "models/gemini-1.5-flash" のような形式
+	var url = "https://generativelanguage.googleapis.com/v1beta/" + model_path + ":generateContent?key=" + api_key
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
@@ -56,13 +85,14 @@ func _on_request_completed(result, response_code, headers, body):
 	if parse_err == OK:
 		var response = json.get_data()
 		if response.has("candidates") and response["candidates"].size() > 0:
-			var content = response["candidates"][0]["content"]["parts"][0]["text"]
-			var inner_json = JSON.new()
-			# 余計なマークダウン記法(```json ... ```)を削除
-			var clean_content = content.replace("```json", "").replace("```", "").strip_edges()
-			var inner_err = inner_json.parse(clean_content)
-			if inner_err == OK:
-				monster_generated.emit(inner_json.get_data())
-				return
+			var part = response["candidates"][0]["content"]["parts"][0]
+			if part.has("text"):
+				var content = part["text"]
+				var inner_json = JSON.new()
+				var clean_content = content.replace("```json", "").replace("```", "").strip_edges()
+				var inner_err = inner_json.parse(clean_content)
+				if inner_err == OK:
+					monster_generated.emit(inner_json.get_data())
+					return
 	
 	error_occurred.emit("解析失敗: " + response_text.left(50))

@@ -48,7 +48,7 @@ func _ready():
 	
 	attack_button.disabled = true
 	
-	status_label.text = "Ver 1.5 - 待機中"
+	status_label.text = "Ver 1.6 - 待機中"
 	load_api_key()
 	update_ui()
 
