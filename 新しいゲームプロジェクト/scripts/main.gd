@@ -12,7 +12,7 @@ extends Control
 @onready var api_key_input = $UI/APIKeyInput
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.7"
+const APP_VERSION = "Ver 1.7.1"
 
 var image_http_request: HTTPRequest
 
@@ -122,7 +122,11 @@ func _fetch_monster_image(prompt: String):
 	image_http_request.request(url)
 
 func _on_image_request_completed(result, response_code, headers, body):
-	if result != OK or response_code != 200:
+	if result != OK:
+		log_label.text += "\n[color=red](画像通信失敗: result=" + str(result) + ")[/color]"
+		return
+	if response_code != 200:
+		log_label.text += "\n[color=red](画像取得失敗: HTTP " + str(response_code) + ")[/color]"
 		return
 		
 	var image = Image.new()
@@ -133,6 +137,9 @@ func _on_image_request_completed(result, response_code, headers, body):
 	if err == OK:
 		var tex = ImageTexture.create_from_image(image)
 		monster_image.texture = tex
+		log_label.text += "\n[color=green](画像を表示しました)[/color]"
+	else:
+		log_label.text += "\n[color=red](画像解析失敗: " + str(err) + ")[/color]"
 
 func _on_attack_button_pressed():
 	if current_monster.is_empty(): return
