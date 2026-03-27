@@ -79,6 +79,12 @@ size_flags_vertical = 3
 bbcode_enabled = true
 text = "[center]ここにログが表示されます[/center]"
 
+[node name="CopyLogButton" type="Button" parent="UI"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "ログをコピーして報告する"
+
 [node name="Buttons" type="HBoxContainer" parent="UI"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2

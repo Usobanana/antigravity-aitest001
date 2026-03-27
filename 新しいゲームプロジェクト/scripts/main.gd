@@ -11,9 +11,10 @@ extends Control
 @onready var attack_button = $UI/Buttons/AttackButton
 @onready var api_key_input = $UI/KeyInputHBox/APIKeyInput
 @onready var key_prompt_button = $UI/KeyInputHBox/KeyPromptButton
+@onready var copy_log_button = $UI/CopyLogButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.20"
+const APP_VERSION = "Ver 1.21"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
@@ -62,6 +63,7 @@ func _ready():
 	image_http_request.request_completed.connect(_on_image_request_completed)
 	
 	key_prompt_button.pressed.connect(_on_key_prompt_button_pressed)
+	copy_log_button.pressed.connect(_on_copy_log_button_pressed)
 	
 	load_api_key()
 	update_ui()
@@ -111,6 +113,17 @@ func _on_key_prompt_button_pressed():
 			api_key_input.text = result
 			save_api_key(result)
 			status_label.text = APP_VERSION + " - キーを設定しました"
+
+func _on_copy_log_button_pressed():
+	var full_text = log_label.get_parsed_text()
+	if OS.has_feature("web"):
+		# JS を介してクリップボードにコピー（ユーザー操作由来の必要あり）
+		var escaped_text = full_text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
+		var js_code = "navigator.clipboard.writeText('" + escaped_text + "').then(() => alert('ログをコピーしました。チャットに貼り付けて送信してください。'));"
+		JavaScriptBridge.eval(js_code)
+	else:
+		DisplayServer.clipboard_set(full_text)
+		status_label.text = "ログをコピーしました"
 
 func _on_monster_generated(data):
 	current_monster = data
