@@ -39,7 +39,8 @@ func generate_monster(api_key: String):
 
 func _try_generate_with_current_model():
 	if _current_model_index >= _last_candidates.size():
-		error_occurred.emit("全モデル試行失敗:\n" + _error_history)
+		var key_len = _last_api_key.length()
+		error_occurred.emit("全モデル試行失敗 (キー長: " + str(key_len) + "):\n" + _error_history)
 		return
 		
 	var target = _last_candidates[_current_model_index]
