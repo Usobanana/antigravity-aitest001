@@ -13,7 +13,7 @@ extends Control
 @onready var key_prompt_button = $UI/KeyInputHBox/KeyPromptButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.14"
+const APP_VERSION = "Ver 1.15"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
@@ -87,7 +87,9 @@ func update_ui():
 		monster_hp_bar.value = current_monster["current_hp"]
 
 func _on_spawn_button_pressed():
-	var key = api_key_input.text.strip_edges()
+	# iPhone等のコピペで混入しやすい特殊空白(\u00A0等)や改行を徹底除去
+	var key = api_key_input.text
+	key = key.replace(" ", "").replace("\r", "").replace("\n", "").replace("\u00A0", "").strip_edges()
 	if key.is_empty():
 		status_label.text = "APIキーを入力してください"
 		return

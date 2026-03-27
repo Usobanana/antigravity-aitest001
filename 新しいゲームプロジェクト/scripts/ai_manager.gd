@@ -27,11 +27,12 @@ func generate_monster(api_key: String):
 func _on_debug_completed(result, response_code, headers, body, api_key):
 	var response_text = body.get_string_from_utf8()
 	
-	# v1 と v1beta の両方を試すための候補リスト
+	# v1 と v1beta の両方、および最新の 8b モデルを含む候補
 	_last_candidates = [
-		{"v": "v1", "m": "models/gemini-1.5-flash"},
 		{"v": "v1beta", "m": "models/gemini-1.5-flash"},
-		{"v": "v1", "m": "models/gemini-1.5-pro"},
+		{"v": "v1", "m": "models/gemini-1.5-flash"},
+		{"v": "v1beta", "m": "models/gemini-1.5-flash-8b"},
+		{"v": "v1beta", "m": "models/gemini-1.5-flash-latest"},
 		{"v": "v1", "m": "models/gemini-pro"}
 	]
 	
@@ -68,9 +69,7 @@ func _actually_generate(api_key: String, version: String, model_path: String):
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
 
-	var prompt = "あなたはRPGのモンスター生成器です。以下のJSON形式のみで返答してください。余計な説明は一切不要です。\n"
-	prompt += "回答形式例: {\"name\": \"名前\", \"hp\": 50, \"atk\": 10, \"greeting\": \"出現!!\", \"death_cry\": \"ぐふっ\", \"image_prompt\": \"Engish keywords for monster image\"}\n"
-	prompt += "指示: 新しいモンスターを1体生成。"
+	var prompt = "RPGモンスター生成(JSON形式のみ): {\"name\":\"名前\",\"hp\":50,\"atk\":10,\"greeting\":\"出現!\",\"death_cry\":\"ぐふっ\",\"image_prompt\":\"English monster appearance keywords\"}"
 
 	var body_data = JSON.stringify({
 		"contents": [{ "parts": [{ "text": prompt }] }]
