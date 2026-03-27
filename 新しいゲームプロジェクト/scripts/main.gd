@@ -12,7 +12,7 @@ extends Control
 @onready var api_key_input = $UI/APIKeyInput
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.7.1"
+const APP_VERSION = "Ver 1.7.2"
 
 var image_http_request: HTTPRequest
 
@@ -119,7 +119,8 @@ func _fetch_monster_image(prompt: String):
 	var url = "https://image.pollinations.ai/prompt/" + encoded_prompt + "?width=512&height=512&nologo=true&seed=" + str(randi())
 	
 	log_label.text += "\n[color=gray](画像を生成中...)[/color]"
-	image_http_request.request(url)
+	# メソッドを GET に明示し、ヘッダーを空にする
+	image_http_request.request(url, [], HTTPClient.METHOD_GET)
 
 func _on_image_request_completed(result, response_code, headers, body):
 	if result != OK:
