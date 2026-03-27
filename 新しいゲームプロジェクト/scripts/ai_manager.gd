@@ -7,12 +7,17 @@ const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-
 signal monster_generated(data: Dictionary)
 signal error_occurred(message: String)
 
+var _last_api_key = ""
+var _last_candidates = []
+var _current_model_index = 0
+
 func generate_monster(api_key: String):
 	if api_key.is_empty():
 		error_occurred.emit("APIキーが設定されていません。")
 		return
 
-	# デバッグ用: まずはモデルリストを取得してみる (疎通確認)
+	_last_api_key = api_key
+	# デバッグ用: まずはモデルリストを取得してみる
 	var list_url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + api_key
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
@@ -21,30 +26,35 @@ func generate_monster(api_key: String):
 
 func _on_debug_completed(result, response_code, headers, body, api_key):
 	var response_text = body.get_string_from_utf8()
-	var best_model = "models/gemini-1.5-flash" # デフォルト
 	
+	_last_candidates = ["models/gemini-1.5-flash", "models/gemini-1.5-flash-latest", "models/gemini-1.5-pro", "models/gemini-pro"]
 	if response_code == 200:
 		var json = JSON.new()
 		var parse_err = json.parse(response_text)
 		if parse_err == OK:
 			var data = json.get_data()
-			var available_models = []
+			var available = []
 			if data.has("models"):
 				for m in data["models"]:
-					available_models.append(m["name"])
-			
-			# 最適なモデルを順に探す
-			var candidates = ["models/gemini-1.5-flash", "models/gemini-1.5-flash-latest", "models/gemini-1.5-pro", "models/gemini-pro"]
-			for c in candidates:
-				if c in available_models:
-					best_model = c
-					break
-	
-	# 解析に失敗しても、デフォルトの best_model (1.5-flash) でモンスター生成へ進める
-	_actually_generate(api_key, best_model)
+					available.append(m["name"])
+			if available.size() > 0:
+				# 取得できた場合はそれも候補に加える（重複なし）
+				for m in available:
+					if not m in _last_candidates:
+						_last_candidates.append(m)
+
+	_current_model_index = 0
+	_try_generate_with_current_model()
+
+func _try_generate_with_current_model():
+	if _current_model_index >= _last_candidates.size():
+		error_occurred.emit("すべてのモデルで生成に失敗しました(404等)。")
+		return
+		
+	var model_path = _last_candidates[_current_model_index]
+	_actually_generate(_last_api_key, model_path)
 
 func _actually_generate(api_key: String, model_path: String):
-	# model_path は "models/gemini-1.5-flash" のような形式
 	var url = "https://generativelanguage.googleapis.com/v1beta/" + model_path + ":generateContent?key=" + api_key
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
@@ -62,6 +72,12 @@ func _actually_generate(api_key: String, model_path: String):
 	http_request.request(url, headers, HTTPClient.METHOD_POST, body_data)
 
 func _on_request_completed(result, response_code, headers, body):
+	# 404エラーの場合は、次のモデル候補でリトライしてみる
+	if response_code == 404 and _current_model_index < _last_candidates.size() - 1:
+		_current_model_index += 1
+		_try_generate_with_current_model()
+		return
+
 	var response_text = body.get_string_from_utf8()
 	if response_code != 200:
 		error_occurred.emit("生成エラー(" + str(response_code) + "): " + response_text.left(100))
@@ -75,6 +91,7 @@ func _on_request_completed(result, response_code, headers, body):
 			var part = response["candidates"][0]["content"]["parts"][0]
 			if part.has("text"):
 				var content = part["text"]
+				# JSON抽出とパース
 				var inner_json = JSON.new()
 				var clean_content = content.replace("```json", "").replace("```", "").strip_edges()
 				var inner_err = inner_json.parse(clean_content)
