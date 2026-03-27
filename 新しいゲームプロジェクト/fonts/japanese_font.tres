@@ -1,0 +1,5 @@
+[gd_resource type="SystemFont" format=3]
+
+[resource]
+font_names = PackedStringArray("sans-serif", "Meiryo", "Yu Gothic", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP")
+subpixel_positioning = 0

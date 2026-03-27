@@ -15,6 +15,15 @@ var current_monster = {}
 var player_hp = 100
 
 func _ready():
+	# 日本語フォントの適用
+	var jp_font = load("res://fonts/japanese_font.tres")
+	status_label.add_theme_font_override("font", jp_font)
+	monster_name_label.add_theme_font_override("font", jp_font)
+	log_label.add_theme_font_override("normal_font", jp_font)
+	api_key_input.add_theme_font_override("font", jp_font)
+	spawn_button.add_theme_font_override("font", jp_font)
+	attack_button.add_theme_font_override("font", jp_font)
+
 	ai_manager.monster_generated.connect(_on_monster_generated)
 	ai_manager.error_occurred.connect(_on_ai_error)
 	
@@ -31,9 +40,13 @@ func update_ui():
 		monster_hp_bar.value = current_monster["current_hp"]
 
 func _on_spawn_button_pressed():
+	var key = api_key_input.text.strip_edges()
+	if key.is_empty():
+		status_label.text = "APIキーを入力してください"
+		return
 	status_label.text = "AI召喚中..."
 	spawn_button.disabled = true
-	ai_manager.generate_monster(api_key_input.text)
+	ai_manager.generate_monster(key)
 
 func _on_monster_generated(data):
 	current_monster = data
