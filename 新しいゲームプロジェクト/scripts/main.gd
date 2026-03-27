@@ -14,7 +14,7 @@ extends Control
 @onready var copy_log_button = $UI/CopyLogButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.27"
+const APP_VERSION = "Ver 1.28"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest

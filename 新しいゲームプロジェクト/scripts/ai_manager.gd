@@ -74,13 +74,14 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
 	
-	# 全てをエンコードして JS 側に渡す（フリーズ防止の最善策）
-	var encoded_url = url_raw.uri_encode()
+	# ボディのみエンコード（URLは絶対そのまま：コロンが %3A になると 404 になるため）
 	var encoded_body = body_data_raw.uri_encode()
 	
+	# URL内のシングルクォートをエスケープ (Gemini URLには通常含まれないが念の為)
+	var safe_url = url_raw.replace("'", "\\'")
+	
 	var js_code = """
-	(async function(enc_url, enc_body) {
-		const url = decodeURIComponent(enc_url);
+	(async function(url, enc_body) {
 		const body = decodeURIComponent(enc_body);
 		
 		// 10秒のタイムアウトを設定
@@ -114,7 +115,7 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 			clearTimeout(id);
 			window.godot_fetch_callback(JSON.stringify({ok: false, error: e.message, code: 0}));
 		}
-	})('""" + encoded_url + """', '""" + encoded_body + """')
+	})('""" + safe_url + """', '""" + encoded_body + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
