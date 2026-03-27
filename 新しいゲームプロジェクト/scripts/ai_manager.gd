@@ -2,7 +2,7 @@ extends Node
 
 # AI管理クラス: Gemini 1.5 Flash API との通信を担当
 
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key="
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key="
 
 signal monster_generated(data: Dictionary)
 signal error_occurred(message: String)

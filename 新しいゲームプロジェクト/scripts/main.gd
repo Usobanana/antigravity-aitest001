@@ -48,6 +48,7 @@ func _ready():
 	
 	attack_button.disabled = true
 	
+	status_label.text = "Ver 1.4 - 待機中"
 	load_api_key()
 	update_ui()
 
@@ -92,7 +93,7 @@ func _on_monster_generated(data):
 	update_ui()
 
 func _on_ai_error(msg):
-	status_label.text = "エラー発生"
+	status_label.text = "Ver 1.4 - エラー発生"
 	log_label.text = msg
 	spawn_button.disabled = false
 
