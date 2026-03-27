@@ -53,19 +53,20 @@ func _on_debug_completed(result, response_code, headers, body, api_key):
 						_last_candidates.append({"v": "v1beta", "m": mname})
 
 	_current_model_index = 0
-	_try_generate_with_current_model()
+	_error_history = ""
 
 func _try_generate_with_current_model():
 	if _current_model_index >= _last_candidates.size():
-		error_occurred.emit("全モデル試行失敗(404等)。キーを確認してください。")
+		error_occurred.emit("全モデル試行失敗:\n" + _error_history)
 		return
 		
 	var target = _last_candidates[_current_model_index]
+	status_label.text = APP_VERSION + " - AI召喚中(" + target["m"].split("/")[-1] + ")..."
 	_actually_generate(_last_api_key, target["v"], target["m"])
 
 func _actually_generate(api_key: String, version: String, model_path: String):
-	# ヘッダーベースの認証に切り替え (URL パラメータによる 404 回避)
-	var url = "https://generativelanguage.googleapis.com/" + version + "/" + model_path + ":generateContent"
+	# 最もシンプルな ?key= 方式（カスタムヘッダーによるプリフライト 404 回避）
+	var url = "https://generativelanguage.googleapis.com/" + version + "/" + model_path + ":generateContent?key=" + api_key
 	
 	var prompt = "RPGモンスター生成(JSON形式のみ): {\"name\":\"名前\",\"hp\":50,\"atk\":10,\"greeting\":\"出現!\",\"death_cry\":\"ぐふっ\",\"image_prompt\":\"English monster appearance keywords\"}"
 	var body_data = JSON.stringify({
@@ -74,21 +75,18 @@ func _actually_generate(api_key: String, version: String, model_path: String):
 
 	# Web環境（iOS等）では Godot の HTTPRequest ではなく JS の fetch を試す（CORS/404対策）
 	if OS.has_feature("web"):
-		_generate_via_js(url, api_key, body_data)
+		_generate_via_js(url, body_data)
 		return
 
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
 	http_request.request_completed.connect(_on_request_completed)
-	var headers = [
-		"Content-Type: application/json",
-		"x-goog-api-key: " + api_key
-	]
+	var headers = ["Content-Type: application/json"]
 	http_request.request(url, headers, HTTPClient.METHOD_POST, body_data)
 
 var _js_callback_ref # コールバック参照保持用
 
-func _generate_via_js(url_raw: String, api_key: String, body_data_raw: String):
+func _generate_via_js(url_raw: String, body_data_raw: String):
 	_js_callback_ref = JavaScriptBridge.create_callback(_on_js_fetch_completed)
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
@@ -97,34 +95,27 @@ func _generate_via_js(url_raw: String, api_key: String, body_data_raw: String):
 	var encoded_body = body_data_raw.uri_encode()
 	
 	var js_code = """
-	(async function(url, key, enc_body) {
+	(async function(url, enc_body) {
 		const body = decodeURIComponent(enc_body);
 		try {
 			const resp = await fetch(url, {
 				method: 'POST',
-				headers: { 
-					'Content-Type': 'application/json',
-					'x-goog-api-key': key
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: body
 			});
 			const status = resp.status;
 			let data = {};
 			try { data = await resp.json(); } catch(e) { data = {message: 'No JSON response'}; }
-			
-			if (!resp.ok) {
-				window.godot_fetch_callback(JSON.stringify({
-					error: 'HTTP ' + status, 
-					code: status, 
-					details: JSON.stringify(data)
-				}));
-			} else {
-				window.godot_fetch_callback(JSON.stringify(data));
-			}
+			window.godot_fetch_callback(JSON.stringify({
+				ok: resp.ok,
+				error: 'HTTP ' + status, 
+				code: status, 
+				details: JSON.stringify(data)
+			}));
 		} catch (e) {
-			window.godot_fetch_callback(JSON.stringify({error: e.message, code: 0}));
+			window.godot_fetch_callback(JSON.stringify({ok: false, error: e.message, code: 0}));
 		}
-	})('""" + url_raw + """', '""" + api_key + """', '""" + encoded_body + """')
+	})('""" + url_raw + """', '""" + encoded_body + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
@@ -133,31 +124,28 @@ func _on_js_fetch_completed(args):
 	var json = JSON.new()
 	if json.parse(result_json) == OK:
 		var data = json.get_data()
-		if data.has("error"):
+		if !data.get("ok", false):
 			var code = data.get("code", 0)
-			# 404 の場合はリトライ
-			if code == 404 and _current_model_index < _last_candidates.size() - 1:
-				_current_model_index += 1
-				_try_generate_with_current_model()
-			else:
-				var mname = _last_candidates[_current_model_index]["m"]
-				var details = data.get("details", "")
-				error_occurred.emit("JS通信エラー(" + str(code) + " @ " + mname + "): " + str(data["error"]) + "\n詳細: " + details)
+			var mname = _last_candidates[_current_model_index]["m"]
+			_error_history += "[" + mname + "] " + str(data["error"]) + " " + str(data.get("details", "")) + "\n"
+			
+			# 次のモデルへ
+			_current_model_index += 1
+			_try_generate_with_current_model()
 		else:
 			_parse_gemini_response(data)
 	else:
 		error_occurred.emit("JS通信結果のパース失敗")
 
 func _on_request_completed(result, response_code, headers, body):
-	if response_code == 404 and _current_model_index < _last_candidates.size() - 1:
-		_current_model_index += 1
-		_try_generate_with_current_model()
-		return
-
 	var response_text = body.get_string_from_utf8()
 	if response_code != 200:
-		var model_name = _last_candidates[_current_model_index]["m"]
-		error_occurred.emit("生成エラー(" + str(response_code) + " @ " + model_name + "): " + response_text.left(100))
+		var mname = _last_candidates[_current_model_index]["m"]
+		_error_history += "[" + mname + "] HTTP " + str(response_code) + " " + response_text.left(100) + "\n"
+		
+		# 次のモデルへ
+		_current_model_index += 1
+		_try_generate_with_current_model()
 		return
 
 	var json = JSON.new()
@@ -177,4 +165,6 @@ func _parse_gemini_response(response: Dictionary):
 				monster_generated.emit(inner_json.get_data())
 				return
 	
-	error_occurred.emit("AIの回答形式が不正です。")
+	_error_history += "形式エラー\n"
+	_current_model_index += 1
+	_try_generate_with_current_model()
