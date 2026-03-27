@@ -13,7 +13,7 @@ var _error_history = ""
 
 # 親(Main)から設定される変数
 var status_label: Label
-var APP_VERSION = "Ver 0.1"
+var APP_VERSION = "Ver 0.2"
 var _js_callback_ref # コールバック参照保持用 (JS 側からの呼び出しに必須)
 
 func generate_monster(api_key: String):

@@ -15,7 +15,7 @@ extends Control
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 0.1"
+const APP_VERSION = "Ver 0.2"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
