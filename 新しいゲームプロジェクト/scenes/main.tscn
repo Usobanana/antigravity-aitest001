@@ -48,6 +48,12 @@ theme_override_font_sizes/font_size = 32
 text = "---"
 horizontal_alignment = 1
 
+[node name="MonsterImage" type="TextureRect" parent="UI/MonsterInfo"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+expand_mode = 2
+stretch_mode = 5
+
 [node name="HPBar" type="ProgressBar" parent="UI/MonsterInfo"]
 custom_minimum_size = Vector2(0, 30)
 layout_mode = 2

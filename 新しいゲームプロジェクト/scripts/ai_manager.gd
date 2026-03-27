@@ -64,8 +64,8 @@ func _actually_generate(api_key: String, model_path: String):
 	http_request.request_completed.connect(_on_request_completed)
 
 	var prompt = "あなたはRPGのモンスター生成器です。以下のJSON形式のみで返答してください。余計な説明は一切不要です。\n"
-	prompt += "回答形式例: {\"name\": \"名前\", \"hp\": 50, \"atk\": 10, \"greeting\": \"出現!!\", \"death_cry\": \"ぐふっ\"}\n"
-	prompt += "指示: 新しいモンスターを1体生成。"
+	prompt += "回答形式例: {\"name\": \"名前\", \"hp\": 50, \"atk\": 10, \"greeting\": \"出現!!\", \"death_cry\": \"ぐふっ\", \"image_prompt\": \"Engish keywords for monster image\"}\n"
+	prompt += "指示: 新しいモンスターを1体生成。image_promptには、そのモンスターの姿を説明する短い英語キーワード(10語以内)を入れてください。"
 
 	var body_data = JSON.stringify({
 		"contents": [{ "parts": [{ "text": prompt }] }]

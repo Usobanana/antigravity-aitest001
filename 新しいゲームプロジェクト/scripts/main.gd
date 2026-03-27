@@ -10,8 +10,11 @@ extends Control
 @onready var spawn_button = $UI/Buttons/SpawnButton
 @onready var attack_button = $UI/Buttons/AttackButton
 @onready var api_key_input = $UI/APIKeyInput
+@onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.6.2"
+const APP_VERSION = "Ver 1.7"
+
+var image_http_request: HTTPRequest
 
 var current_monster = {}
 var player_hp = 100
@@ -50,6 +53,12 @@ func _ready():
 	attack_button.disabled = true
 	
 	status_label.text = APP_VERSION + " - 待機中"
+	
+	# 画像取得用のHTTPRequestを準備
+	image_http_request = HTTPRequest.new()
+	add_child(image_http_request)
+	image_http_request.request_completed.connect(_on_image_request_completed)
+	
 	load_api_key()
 	update_ui()
 
@@ -86,17 +95,44 @@ func _on_spawn_button_pressed():
 
 func _on_monster_generated(data):
 	current_monster = data
-	current_monster["current_hp"] = data["hp"] # バージョン表示を追加してキャッシュ更新を確認
-	status_label.text = "Ver 1.3 - モンスター出現！"
+	current_monster["current_hp"] = data["hp"]
+	status_label.text = APP_VERSION + " - モンスター出現！"
 	log_label.text = data["greeting"]
 	spawn_button.disabled = false
 	attack_button.disabled = false
+	
+	# 画像の生成・取得を開始
+	if data.has("image_prompt"):
+		_fetch_monster_image(data["image_prompt"])
+		
 	update_ui()
 
 func _on_ai_error(msg):
 	status_label.text = APP_VERSION + " - エラー発生"
 	log_label.text = msg
 	spawn_button.disabled = false
+
+func _fetch_monster_image(prompt: String):
+	# Pollinations.ai を使用して画像を生成・取得
+	monster_image.texture = null # 前の画像をクリア
+	var encoded_prompt = (prompt + " pixel art sprite, dark background").uri_encode()
+	var url = "https://image.pollinations.ai/prompt/" + encoded_prompt + "?width=512&height=512&nologo=true&seed=" + str(randi())
+	
+	log_label.text += "\n[color=gray](画像を生成中...)[/color]"
+	image_http_request.request(url)
+
+func _on_image_request_completed(result, response_code, headers, body):
+	if result != OK or response_code != 200:
+		return
+		
+	var image = Image.new()
+	var err = image.load_jpg_from_buffer(body)
+	if err != OK:
+		err = image.load_png_from_buffer(body)
+		
+	if err == OK:
+		var tex = ImageTexture.create_from_image(image)
+		monster_image.texture = tex
 
 func _on_attack_button_pressed():
 	if current_monster.is_empty(): return
