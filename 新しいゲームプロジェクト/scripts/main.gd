@@ -13,7 +13,7 @@ extends Control
 @onready var key_prompt_button = $UI/KeyInputHBox/KeyPromptButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.15"
+const APP_VERSION = "Ver 1.16"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
@@ -70,7 +70,10 @@ func load_api_key():
 	var config = ConfigFile.new()
 	var err = config.load(SAVE_PATH)
 	if err == OK:
-		api_key_input.text = config.get_value("api", "key", "")
+		var raw_key = config.get_value("api", "key", "")
+		# ロード時にも徹底洗浄（過去の汚れた保存データ対策）
+		var clean_key = raw_key.replace(" ", "").replace("\r", "").replace("\n", "").replace("\u00A0", "").strip_edges()
+		api_key_input.text = clean_key
 
 func save_api_key(key: String):
 	var config = ConfigFile.new()
