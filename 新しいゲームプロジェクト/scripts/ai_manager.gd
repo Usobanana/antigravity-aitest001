@@ -91,21 +91,35 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
 	
-	# 引数を URI エンコードして JS 側に渡す（バッククォートやエスケープ消失を防ぐ）
+	# 全てをエンコードして JS 側に渡す（フリーズ防止の最善策）
+	var encoded_url = url_raw.uri_encode()
 	var encoded_body = body_data_raw.uri_encode()
 	
 	var js_code = """
-	(async function(url, enc_body) {
+	(async function(enc_url, enc_body) {
+		const url = decodeURIComponent(enc_url);
 		const body = decodeURIComponent(enc_body);
+		
+		// 10秒のタイムアウトを設定
+		let timeout_triggered = false;
+		const id = setTimeout(() => {
+			timeout_triggered = true;
+			window.godot_fetch_callback(JSON.stringify({ok: false, error: 'TIMEOUT', code: 0}));
+		}, 10000);
+
 		try {
 			const resp = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: body
 			});
+			if (timeout_triggered) return;
+			clearTimeout(id);
+
 			const status = resp.status;
 			let data = {};
-			try { data = await resp.json(); } catch(e) { data = {message: 'No JSON response'}; }
+			try { data = await resp.json(); } catch(e) { data = {message: 'No JSON'}; }
+			
 			window.godot_fetch_callback(JSON.stringify({
 				ok: resp.ok,
 				error: 'HTTP ' + status, 
@@ -113,9 +127,11 @@ func _generate_via_js(url_raw: String, body_data_raw: String):
 				details: JSON.stringify(data)
 			}));
 		} catch (e) {
+			if (timeout_triggered) return;
+			clearTimeout(id);
 			window.godot_fetch_callback(JSON.stringify({ok: false, error: e.message, code: 0}));
 		}
-	})('""" + url_raw + """', '""" + encoded_body + """')
+	})('""" + encoded_url + """', '""" + encoded_body + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
