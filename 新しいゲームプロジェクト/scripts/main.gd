@@ -157,12 +157,37 @@ func _on_attack_button_pressed():
 	
 	if current_monster["current_hp"] <= 0:
 		current_monster["current_hp"] = 0
+		status_label.text = APP_VERSION + " - 討伐完了！"
 		log_label.text += current_monster["death_cry"] + "\n勝利した！"
+		play_death_animation()
+		spawn_button.disabled = false
 		attack_button.disabled = true
 	else:
+		shake_monster()
+		flash_monster()
 		# 敵の反撃（簡易版）
 		var enemy_damage = current_monster["atk"]
 		player_hp -= enemy_damage
 		log_label.text += current_monster["name"] + " の反撃！ " + str(enemy_damage) + " のダメージ！"
 	
 	update_ui()
+
+func shake_monster():
+	var tween = create_tween()
+	var original_pos = monster_image.position
+	for i in range(4):
+		var offset = Vector2(randf_range(-10, 10), randf_range(-10, 10))
+		tween.tween_property(monster_image, "position", original_pos + offset, 0.05)
+	tween.tween_property(monster_image, "position", original_pos, 0.05)
+
+func flash_monster():
+	var tween = create_tween()
+	tween.tween_property(monster_image, "modulate", Color.RED, 0.1)
+	tween.tween_property(monster_image, "modulate", Color.WHITE, 0.1)
+
+func play_death_animation():
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(monster_image, "self_modulate:a", 0.0, 0.5)
+	tween.tween_property(monster_image, "scale", Vector2(0.5, 0.5), 0.5)
+	tween.tween_property(monster_image, "rotation", deg_to_rad(15), 0.5)
