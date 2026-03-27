@@ -21,6 +21,9 @@ func generate_monster(api_key: String):
 	var list_url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + api_key
 	var http_request = HTTPRequest.new()
 	add_child(http_request)
+	http_request.request_completed.connect(_on_debug_completed.bind(api_key))
+	http_request.request(list_url, [], HTTPClient.METHOD_GET)
+
 func _on_debug_completed(result, response_code, headers, body, api_key):
 	var response_text = body.get_string_from_utf8()
 	
