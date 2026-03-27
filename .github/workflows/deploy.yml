@@ -21,16 +21,17 @@ jobs:
       - name: Install Godot
         uses: chickensoft-games/setup-godot@v2
         with:
-          version: 4.3 # バージョンは4.3（安定版）を指定
+          version: 4.3
           use-dotnet: false
 
       - name: Web Export
         run: |
-          mkdir -v -p build/web
-          godot --headless --export-release "Web" build/web/index.html
-
-      - name: Copy coi-serviceworker
-        run: cp coi-serviceworker.js build/web/
+          # サブディレクトリに移動してエクスポート
+          cd "新しいゲームプロジェクト"
+          mkdir -v -p ../build/web
+          godot --headless --export-release "Web" ../build/web/index.html
+          # coi-serviceworker もコピー
+          cp coi-serviceworker.js ../build/web/
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
