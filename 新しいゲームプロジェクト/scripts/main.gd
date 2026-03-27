@@ -15,14 +15,16 @@ var current_monster = {}
 var player_hp = 100
 
 func _ready():
-	# 日本語フォントの適用
-	var jp_font = load("res://fonts/japanese_font.tres")
-	status_label.add_theme_font_override("font", jp_font)
-	monster_name_label.add_theme_font_override("font", jp_font)
-	log_label.add_theme_font_override("normal_font", jp_font)
-	api_key_input.add_theme_font_override("font", jp_font)
-	spawn_button.add_theme_font_override("font", jp_font)
-	attack_button.add_theme_font_override("font", jp_font)
+	# 日本語フォントを直接ファイルから読み込む
+	var jp_font = load("res://fonts/jp_font.ttf")
+	if jp_font:
+		status_label.add_theme_font_override("font", jp_font)
+		monster_name_label.add_theme_font_override("font", jp_font)
+		log_label.add_theme_font_override("normal_font", jp_font)
+		log_label.add_theme_font_override("bold_font", jp_font)
+		api_key_input.add_theme_font_override("font", jp_font)
+		spawn_button.add_theme_font_override("font", jp_font)
+		attack_button.add_theme_font_override("font", jp_font)
 
 	ai_manager.monster_generated.connect(_on_monster_generated)
 	ai_manager.error_occurred.connect(_on_ai_error)
