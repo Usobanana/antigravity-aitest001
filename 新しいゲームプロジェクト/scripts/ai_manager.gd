@@ -83,14 +83,20 @@ func _actually_generate(api_key: String, version: String, model_path: String):
 
 var _js_callback_ref # コールバック参照保持用
 
-func _generate_via_js(url: String, body_data: String):
+func _generate_via_js(url_raw: String, body_data_raw: String):
 	# JavaScript の非同期 fetch 結果を安全に受け取るためのコールバック作成
 	_js_callback_ref = JavaScriptBridge.create_callback(_on_js_fetch_completed)
 	var window = JavaScriptBridge.get_interface("window")
 	window.godot_fetch_callback = _js_callback_ref
 	
+	# 引数を URI エンコードして JS 側に渡す（引用符や改行による破損を防ぐ）
+	var encoded_url = url_raw.uri_encode()
+	var encoded_body = body_data_raw.uri_encode()
+	
 	var js_code = """
-	(async function(url, body) {
+	(async function(enc_url, enc_body) {
+		const url = decodeURIComponent(enc_url);
+		const body = decodeURIComponent(enc_body);
 		try {
 			const resp = await fetch(url, {
 				method: 'POST',
@@ -100,14 +106,14 @@ func _generate_via_js(url: String, body_data: String):
 			const status = resp.status;
 			const data = await resp.json();
 			if (!resp.ok) {
-				window.godot_fetch_callback(JSON.stringify({error: 'HTTP ' + status, code: status}));
+				window.godot_fetch_callback(JSON.stringify({error: 'HTTP ' + status, code: status, details: data}));
 			} else {
 				window.godot_fetch_callback(JSON.stringify(data));
 			}
 		} catch (e) {
 			window.godot_fetch_callback(JSON.stringify({error: e.message, code: 0}));
 		}
-	})('""" + url + """', '""" + body_data.replace("'", "\\'") + """')
+	})('""" + encoded_url + """', '""" + encoded_body + """')
 	"""
 	JavaScriptBridge.eval(js_code)
 
