@@ -28,10 +28,23 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 15
 
-[node name="APIKeyInput" type="LineEdit" parent="UI"]
+[node name="KeyInputHBox" type="HBoxContainer" parent="UI"]
 layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="APIKeyInput" type="LineEdit" parent="UI/KeyInputHBox"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
 placeholder_text = "Gemini APIキーを入力..."
+alignment = 1
 secret = true
+
+[node name="KeyPromptButton" type="Button" parent="UI/KeyInputHBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "入力窓"
 
 [node name="StatusLabel" type="Label" parent="UI"]
 layout_mode = 2

@@ -9,10 +9,11 @@ extends Control
 @onready var log_label = $UI/LogLabel
 @onready var spawn_button = $UI/Buttons/SpawnButton
 @onready var attack_button = $UI/Buttons/AttackButton
-@onready var api_key_input = $UI/APIKeyInput
+@onready var api_key_input = $UI/KeyInputHBox/APIKeyInput
+@onready var key_prompt_button = $UI/KeyInputHBox/KeyPromptButton
 @onready var monster_image = $UI/MonsterInfo/MonsterImage
 const SAVE_PATH = "user://settings.cfg"
-const APP_VERSION = "Ver 1.9"
+const APP_VERSION = "Ver 1.10"
 const STYLE_PROMPT = "digital illustration, dark fantasy, epic, highly detailed, cinematic lighting, centered on solid dark background"
 
 var image_http_request: HTTPRequest
@@ -60,6 +61,8 @@ func _ready():
 	add_child(image_http_request)
 	image_http_request.request_completed.connect(_on_image_request_completed)
 	
+	key_prompt_button.pressed.connect(_on_key_prompt_button_pressed)
+	
 	load_api_key()
 	update_ui()
 
@@ -93,6 +96,16 @@ func _on_spawn_button_pressed():
 	status_label.text = "AI召喚中..."
 	spawn_button.disabled = true
 	ai_manager.generate_monster(key)
+
+func _on_key_prompt_button_pressed():
+	# iOS等のブラウザ環境でキーボードが出ない問題への対策
+	if OS.has_feature("web"):
+		var js_code = "prompt('Gemini APIキーをここに貼り付けてください', '');"
+		var result = JavaScriptBridge.eval(js_code)
+		if result != null and result != "":
+			api_key_input.text = result
+			save_api_key(result)
+			status_label.text = APP_VERSION + " - キーを設定しました"
 
 func _on_monster_generated(data):
 	current_monster = data
