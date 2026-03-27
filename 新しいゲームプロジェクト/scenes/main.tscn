@@ -1,0 +1,79 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/ai_manager.gd" id="2_ai"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="AIManager" type="Node" parent="."]
+script = ExtResource("2_ai")
+
+[node name="UI" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 15
+
+[node name="APIKeyInput" type="LineEdit" parent="UI"]
+layout_mode = 2
+placeholder_text = "Gemini APIキーを入力..."
+secret = true
+
+[node name="StatusLabel" type="Label" parent="UI"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "待機中"
+horizontal_alignment = 1
+
+[node name="MonsterInfo" type="VBoxContainer" parent="UI"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="UI/MonsterInfo"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "---"
+horizontal_alignment = 1
+
+[node name="HPBar" type="ProgressBar" parent="UI/MonsterInfo"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+value = 50.0
+show_percentage = false
+
+[node name="LogLabel" type="RichTextLabel" parent="UI"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[center]ここにログが表示されます[/center]"
+
+[node name="Buttons" type="HBoxContainer" parent="UI"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="SpawnButton" type="Button" parent="UI/Buttons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "探索する"
+
+[node name="AttackButton" type="Button" parent="UI/Buttons"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "攻撃！"
+
+[connection signal="pressed" from="UI/Buttons/SpawnButton" to="." method="_on_spawn_button_pressed"]
+[connection signal="pressed" from="UI/Buttons/AttackButton" to="." method="_on_attack_button_pressed"]
