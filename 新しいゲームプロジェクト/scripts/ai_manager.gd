@@ -21,39 +21,26 @@ func generate_monster(api_key: String):
 
 func _on_debug_completed(result, response_code, headers, body, api_key):
 	var response_text = body.get_string_from_utf8()
-	if response_code != 200:
-		error_occurred.emit("デバッグ疎通失敗(" + str(response_code) + "): " + response_text.left(100))
-		return
+	var best_model = "models/gemini-1.5-flash" # デフォルト
 	
-	var json = JSON.new()
-	var parse_err = json.parse(response_text)
-	if parse_err != OK:
-		error_occurred.emit("デバッグ解析失敗(Code:" + str(response_code) + " Len:" + str(body.size()) + "): " + response_text.left(50))
-		return
-		
-	var data = json.get_data()
-	var available_models = []
-	if data.has("models"):
-		for m in data["models"]:
-			available_models.append(m["name"])
+	if response_code == 200:
+		var json = JSON.new()
+		var parse_err = json.parse(response_text)
+		if parse_err == OK:
+			var data = json.get_data()
+			var available_models = []
+			if data.has("models"):
+				for m in data["models"]:
+					available_models.append(m["name"])
+			
+			# 最適なモデルを順に探す
+			var candidates = ["models/gemini-1.5-flash", "models/gemini-1.5-flash-latest", "models/gemini-1.5-pro", "models/gemini-pro"]
+			for c in candidates:
+				if c in available_models:
+					best_model = c
+					break
 	
-	# 最適なモデルを順に探す
-	var best_model = ""
-	var candidates = ["models/gemini-1.5-flash", "models/gemini-1.5-flash-latest", "models/gemini-1.5-pro", "models/gemini-pro"]
-	
-	for c in candidates:
-		if c in available_models:
-			best_model = c
-			break
-	
-	if best_model == "":
-		if available_models.size() > 0:
-			best_model = available_models[0] # 何でも良いから最初のを使う
-		else:
-			error_occurred.emit("利用可能なモデルが見つかりません。")
-			return
-
-	# モンスター生成へ進む
+	# 解析に失敗しても、デフォルトの best_model (1.5-flash) でモンスター生成へ進める
 	_actually_generate(api_key, best_model)
 
 func _actually_generate(api_key: String, model_path: String):
